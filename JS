@@ -1,0 +1,129 @@
+const API_KEY = 'YOUR_API_KEY'; // Replace with your OpenWeatherMap API key
+        const BASE_URL = 'https://api.openweathermap.org/data/2.5';
+
+        async function getWeather() {
+            const city = document.getElementById('cityInput').value;
+            
+            if (!city) {
+                alert('Please enter a city name');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                // Get current weather
+                const currentWeatherResponse = await fetch(
+                    `${BASE_URL}/weather?q=${city}&units=metric&appid=${API_KEY}`
+                );
+                
+                if (!currentWeatherResponse.ok) {
+                    throw new Error('City not found');
+                }
+                
+                const currentWeather = await currentWeatherResponse.json();
+                displayCurrentWeather(currentWeather);
+                
+                // Get forecast
+                const forecastResponse = await fetch(
+                    `${BASE_URL}/forecast?q=${city}&units=metric&appid=${API_KEY}`
+                );
+                
+                if (forecastResponse.ok) {
+                    const forecastData = await forecastResponse.json();
+                    displayForecast(forecastData);
+                }
+                
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function displayCurrentWeather(data) {
+            const weatherInfo = document.getElementById('weatherInfo');
+            
+            const date = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            
+            weatherInfo.innerHTML = `
+                <div class="city-name">${data.name}, ${data.sys.country}</div>
+                <div class="date">${date.toLocaleDateString('en-US', options)}</div>
+                <div class="weather-main">
+                    <span class="temperature">${Math.round(data.main.temp)}°C</span>
+                    <img class="weather-icon" src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="${data.weather[0].description}">
+                </div>
+                <div class="weather-description">${data.weather[0].description}</div>
+                <div class="weather-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Feels Like</span>
+                        <span class="detail-value">${Math.round(data.main.feels_like)}°C</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Humidity</span>
+                        <span class="detail-value">${data.main.humidity}%</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Wind Speed</span>
+                        <span class="detail-value">${data.wind.speed} m/s</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Pressure</span>
+                        <span class="detail-value">${data.main.pressure} hPa</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayForecast(data) {
+            const forecastDiv = document.getElementById('forecast');
+            
+            // Get one forecast per day (every 8th item = 24 hours)
+            const dailyForecasts = data.list.filter((item, index) => index % 8 === 0).slice(0, 5);
+            
+            let forecastHTML = `
+                <div class="forecast-title">5-Day Forecast</div>
+                <div class="forecast-container">
+            `;
+            
+            dailyForecasts.forEach(forecast => {
+                const date = new Date(forecast.dt * 1000);
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                
+                forecastHTML += `
+                    <div class="forecast-item">
+                        <div class="day">${dayName}</div>
+                        <img src="https://openweathermap.org/img/wn/${forecast.weather[0].icon}.png" alt="${forecast.weather[0].description}">
+                        <div class="temp">${Math.round(forecast.main.temp)}°C</div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">${forecast.weather[0].main}</div>
+                    </div>
+                `;
+            });
+            
+            forecastHTML += '</div>';
+            forecastDiv.innerHTML = forecastHTML;
+        }
+
+        function showLoading() {
+            const weatherInfo = document.getElementById('weatherInfo');
+            weatherInfo.innerHTML = '<div class="loading">Loading weather data...</div>';
+        }
+
+        function showError(message) {
+            const weatherInfo = document.getElementById('weatherInfo');
+            weatherInfo.innerHTML = `<div class="error">❌ ${message}</div>`;
+            
+            // Clear forecast
+            document.getElementById('forecast').innerHTML = '';
+        }
+
+        // Load weather for default city on page load
+        window.onload = () => {
+            getWeather();
+        };
+
+        // Allow Enter key to search
+        document.getElementById('cityInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                getWeather();
+            }
+        });
